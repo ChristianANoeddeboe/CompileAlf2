@@ -1,0 +1,13 @@
+// Tokens for the lexer:
+
+NUM #: ('0'..'9')+ ('.'('0'..'9')+)? ;#
+ID  #: ('A'..'Z'|'a'..'z'|'_')+ ;     #
+
+// Example: Expressions
+
+data expr = Constant(NUM v)        : v
+          | Variable(ID name)      : name
+          | Mult(expr e1, expr e2) : '(' e1 '*' e2 ')'
+          | Add (expr e1, expr e2) : '(' e1 '+' e2 ')'
+          ;
+
