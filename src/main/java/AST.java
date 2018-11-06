@@ -29,9 +29,14 @@ class Start extends AST{
         for (DataTypeDef dataTypeDef : datatypedefs) {
             result += dataTypeDef.compile();
         }
+        check();
         return result;
     }
-
+    public void check() {
+        for(DataTypeDef curr : datatypedefs) {
+            curr.check();
+        }
+    }
 }
 
 class TokenDef extends AST{
@@ -64,6 +69,11 @@ class DataTypeDef extends AST{
         }
         return result;
     }
+    public void check() {
+        for(Alternative curr : alternatives) {
+            curr.check();
+        }
+    }
 }
 
 class Alternative extends AST{
@@ -78,10 +88,14 @@ class Alternative extends AST{
     public String compile(String parent) {
         String result = "";
         String arg = "";
+
+        //Create class.
         result += "class " + constructor + " extends " + parent + "{\n";
         for (Argument argument : arguments) {
             result += "\t" + argument.compile(false);
         }
+
+        //Create constructor for the class.
         int size = arguments.size();
         for(int i = 0 ; i < size ; i++) {
             arg += arguments.get(i).compile(true);
@@ -90,12 +104,35 @@ class Alternative extends AST{
             }
         }
 
+        //Create variables for the class.
         result += "\t"+constructor+"("+arg+"){\n\t";
         for (Argument curr : arguments) {
-            result += "\tthis."+curr.compile(true)+"="+curr.compile(true)+";\n\t";
+            result += "\tthis."+curr.name+"="+curr.name+";\n\t";
         }
+        result += "}\n";
+
+        //Create toString method.
+        result += "\t"+"public String toString(){\n" + "\t\treturn \"\"";
+        for(int i = 0, j = 0 ; i < tokens.size() ; i++) {
+            String token = tokens.get(i).compile();
+            result += "+"+token;
+            result = result.replace("'","\"");
+        }
+
+        result += ";\n\t";
+
         result += "}\n}\n";
         return result;
+    }
+    public void check() {
+        HashMap<String, Boolean> map = new HashMap<String, Boolean>();
+        for(Argument curr : arguments) {
+            if(map.containsKey(curr.name)) {
+                faux.error("Variable: "+curr.name+" was defined more than once in "+constructor);
+            } else {
+                map.put(curr.name, false);
+            }
+        }
     }
 }
 
@@ -118,21 +155,46 @@ class Argument extends AST{
         }
         result += name;
         if(!parameter) {
-            result += "\n";
+            result += ";\n";
         }
         return result;
     }
 }
 
-abstract class Token extends AST{}
+abstract class Token extends AST{
+
+    public abstract String compile();
+    public abstract void check(HashMap<String, Boolean> map);
+}
 
 class Nonterminal extends Token{
     public String name;
     Nonterminal(String name){this.name=name;}
+
+    public String compile() {
+        return name;
+    }
+
+    public void check(HashMap<String, Boolean> map) {
+        if(map.get(name)) {
+
+        }
+
+    }
+
+
 }
 
 class Terminal extends Token{
     public String token;
     Terminal(String token){this.token=token;}
+
+    public String compile() {
+        return token;
+    }
+
+    public void check(HashMap<String, Boolean> map) {
+
+    }
 }
 
