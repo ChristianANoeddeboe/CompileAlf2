@@ -29,13 +29,7 @@ class Start extends AST{
         for (DataTypeDef dataTypeDef : datatypedefs) {
             result += dataTypeDef.compile();
         }
-        check();
         return result;
-    }
-    public void check() {
-        for(DataTypeDef curr : datatypedefs) {
-            curr.check();
-        }
     }
 }
 
@@ -68,11 +62,6 @@ class DataTypeDef extends AST{
             result += alternative.compile(dataTypeName);
         }
         return result;
-    }
-    public void check() {
-        for(Alternative curr : alternatives) {
-            curr.check();
-        }
     }
 }
 
@@ -164,7 +153,6 @@ class Argument extends AST{
 abstract class Token extends AST{
 
     public abstract String compile();
-    public abstract void check(HashMap<String, Boolean> map);
 }
 
 class Nonterminal extends Token{
@@ -174,15 +162,6 @@ class Nonterminal extends Token{
     public String compile() {
         return name;
     }
-
-    public void check(HashMap<String, Boolean> map) {
-        if(map.get(name)) {
-
-        }
-
-    }
-
-
 }
 
 class Terminal extends Token{
@@ -191,10 +170,6 @@ class Terminal extends Token{
 
     public String compile() {
         return token;
-    }
-
-    public void check(HashMap<String, Boolean> map) {
-
     }
 }
 
