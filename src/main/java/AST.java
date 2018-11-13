@@ -1,4 +1,5 @@
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.List;
 import java.util.ArrayList;
@@ -12,6 +13,8 @@ class faux{ // collection of non-OO auxiliary functions (currently just error)
 
 abstract class AST {
     public static ArrayList<String> tokentable = new ArrayList<String>();
+    public static HashMap<String, Boolean> datatypetable = new HashMap<String, Boolean>();
+    public static HashSet<String> construcnames = new HashSet<String>();
 }
 
 class Start extends AST{
@@ -23,7 +26,7 @@ class Start extends AST{
     }
     public String compile() {
         for (TokenDef curr : tokendefs) {
-            tokentable.add(curr.tokenname);
+            curr.compile();
         }
         String result = "";
         for (DataTypeDef dataTypeDef : datatypedefs) {
@@ -46,10 +49,8 @@ class TokenDef extends AST{
 	this.tokenname=tokenname;
 	this.ANTLRCODE=ANTLRCODE;
     }
-    public String compile() {
-        String result = "";
-
-        return result;
+    public void compile() {
+        tokentable.add(tokenname);
     }
     
 }
@@ -62,6 +63,11 @@ class DataTypeDef extends AST{
 	this.alternatives=alternatives;
     }
     public String compile() {
+        if(datatypetable.containsKey(dataTypeName)) {
+            datatypetable.put(dataTypeName, true);
+        } else {
+            datatypetable.put(dataTypeName, false);
+        }
         String result;
         result = "abstract class "+dataTypeName+"{};\n";
         for (Alternative alternative: alternatives) {
@@ -70,6 +76,23 @@ class DataTypeDef extends AST{
         return result;
     }
     public void check() {
+        //Checks if constructor name is used before, as class names has to be unique.
+        for(Alternative curr : alternatives) {
+            if(tokentable.contains(curr.constructor) || datatypetable.containsKey(curr.constructor)) {
+                faux.error("Illegal construc name: "+curr.constructor+" name is reserved for types.");
+            }
+            if(construcnames.contains(curr.constructor)) {
+                faux.error("Construc name: "+curr.constructor+" already exists.");
+            } else {
+                construcnames.add(curr.constructor);
+            }
+        }
+        //Checking if an abstract datatype name is used more than once.
+        for(String curr : datatypetable.keySet()) {
+            if(datatypetable.get(curr)) {
+                faux.error("Datatype name: "+curr+" is used more than once.");
+            }
+        }
         for(Alternative curr : alternatives) {
             curr.check();
         }
@@ -127,10 +150,14 @@ class Alternative extends AST{
     public void check() {
         HashMap<String, Boolean> map = new HashMap<String, Boolean>();
         for(Argument curr : arguments) {
-            if(map.containsKey(curr.name)) {
-                faux.error("Variable: "+curr.name+" was defined more than once in "+constructor);
-            } else {
-                map.put(curr.name, false);
+            curr.check(map, constructor);
+        }
+        for(Token curr : tokens) {
+            curr.check(map, constructor);
+        }
+        for(String curr : map.keySet()) {
+            if(!map.get(curr)) {
+                faux.error("Parameter: "+curr+" was not used in "+constructor);
             }
         }
     }
@@ -150,8 +177,8 @@ class Argument extends AST{
                 result += "String ";
             }
         }
-        if(type.equals("expr")) {
-            result += "expr ";
+        if(datatypetable.containsKey(type)) {
+            result += type+" ";
         }
         result += name;
         if(!parameter) {
@@ -159,12 +186,26 @@ class Argument extends AST{
         }
         return result;
     }
+
+    public void check(HashMap<String, Boolean> map, String constructor) {
+        if(!datatypetable.containsKey(type) && !tokentable.contains(type)) {
+            faux.error("Variable type: "+type+" is not a valid type in: "+constructor);
+        }
+        if(datatypetable.containsKey(name) || tokentable.contains(name)) {
+            faux.error("Variable name: "+name+" is not permitted in "+constructor);
+        }
+        if(map.containsKey(name)) {
+            faux.error("Variable: "+name+" was defined more than once in "+constructor);
+        } else {
+            map.put(name, false);
+        }
+    }
 }
 
 abstract class Token extends AST{
 
     public abstract String compile();
-    public abstract void check(HashMap<String, Boolean> map);
+    public abstract void check(HashMap<String, Boolean> map, String constructor);
 }
 
 class Nonterminal extends Token{
@@ -175,14 +216,15 @@ class Nonterminal extends Token{
         return name;
     }
 
-    public void check(HashMap<String, Boolean> map) {
-        if(map.get(name)) {
-
+    public void check(HashMap<String, Boolean> map, String constructor) {
+        if(!map.containsKey(name)) {
+            faux.error("Variable: "+name+" is undefined in "+constructor);
+        } else if(map.get(name)) {
+            faux.error("Variable: "+name+" is used more than once in "+constructor);
+        } else {
+            map.put(name, true);
         }
-
     }
-
-
 }
 
 class Terminal extends Token{
@@ -193,8 +235,6 @@ class Terminal extends Token{
         return token;
     }
 
-    public void check(HashMap<String, Boolean> map) {
-
-    }
+    public void check(HashMap<String, Boolean> map, String constructor) {}
 }
 
